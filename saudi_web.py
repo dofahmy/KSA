@@ -78,12 +78,31 @@ PAGE=r"""<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><m
 </style></head><body><header><h1>نظام القوة النسبية لسوق المال السعودي</h1></header><main class="wrap">
 <section class="panel"><h2>عن النظام</h2><p>نظام تحليلي متخصص في رصد فرص الأسهم بالسوق المالية السعودية باستخدام القوة النسبية وحركة الأسعار.<br>يعتمد على تحليل المراحل السعرية لاكتشاف التحولات المحتملة من الضعف إلى التجميع ثم الصعود.<br>يعرض فرص الشراء المحتملة وأداء الإشارات التاريخية خلال 52 أسبوعًا من ظهورها.</p></section>
 <section class="panel"><h2>حالة بيانات تداول السعودية</h2><div id="state" class="notice">جارٍ التحقق من البيانات...</div><small class="muted">الأسهم ومؤشر TASI في قاعدة سعودية مستقلة. لا تُنشأ أسعار أو جلسات غير موجودة.</small></section>
-<section class="panel"><h2>إعدادات المؤشرات</h2><div class="controls"><label>قيمة مؤشر القوة النسبية (RS)<input id="rs" type="number" min="20" max="150" value="29"></label><label>متوسط حسابي قصير المدى<input id="fast" type="number" min="3" max="30" value="18"></label><label>متوسط حسابي طويل المدى<input id="slow" type="number" min="20" max="150" value="29"></label><button class="secondary" onclick="reset()">استعادة الافتراضي</button></div><p class="muted">القيم الافتراضية: RS 29 / قصير 18 / طويل 29. يجب أن يكون المتوسط القصير أقل من الطويل. الإعدادات هنا للعرض؛ تنفيذ الفحص الإداري يتطلب صلاحية محمية.</p></section>
+<section class="panel"><h2>إعدادات المؤشرات</h2><div class="controls"><label>قيمة مؤشر القوة النسبية (RS)<input id="rs" type="number" min="20" max="150" value="29"></label><label>متوسط حسابي قصير المدى<input id="fast" type="number" min="3" max="30" value="18"></label><label>متوسط حسابي طويل المدى<input id="slow" type="number" min="20" max="150" value="29"></label><button class="secondary" onclick="reset()">استعادة الافتراضي</button></div><p class="muted">القيم الافتراضية: RS 29 / قصير 18 / طويل 29. يجب أن يكون المتوسط القصير أقل من الطويل. تشغيل الفحص يتطلب رمز الإدارة المخصّص لهذه الخدمة.</p></section>
+<section class="panel"><h2>تشغيل الفحص الإداري</h2><div class="controls"><label>رمز الإدارة<input id="adminToken" type="password" autocomplete="off" placeholder="الرمز الإداري"></label><button id="scanBtn" onclick="startScan()">تشغيل الفحص</button><span id="scanStatus" class="muted">لم يُشغّل الفحص بعد</span></div><small class="muted">الرمز لا يُحفظ في المتصفح أو ملفات النتائج. لا تشاركيه مع الآخرين.</small></section>
 <section class="panel"><h2>إشارات السوق السعودي</h2><div class="controls"><label>من تاريخ<input id="start" type="date" value="2024-01-01"></label><label>إلى تاريخ<input id="end" type="date" value="2026-10-27"></label><label>بحث سهم<input id="symbol" placeholder="مثال 2222"></label><button onclick="load()">عرض النتائج</button><a class="btn secondary" id="csv" href="/api/export">تصدير CSV</a></div><p id="count" class="muted">لم تُحمّل النتائج بعد</p><div class="tableframe"><table><thead><tr><th>التاريخ</th><th>السهم</th><th>سعر الشراء المقترح</th><th>مدة التداول الضعيف</th><th>جلسات التجميع</th><th>مدة النمط</th><th>القاع</th><th>أعلى سعر</th><th>القمة</th><th>صعود 52أ %</th><th>جلسات القمة</th><th>آخر سعر</th></tr></thead><tbody id="rows"></tbody></table></div></section>
 </main><script>
 const ids=['rs','fast','slow'];function reset(){ids.forEach((id,i)=>document.getElementById(id).value=[29,18,29][i]);}
 function val(r,k){return String(r[k]??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')}
 async function status(){try{const d=await(await fetch('/api/status')).json();document.getElementById('state').textContent=d.ready?`جاهز — ${d.symbols} سهم — أحدث جلسة ${d.latest} — TASI: ${d.tasi_rows} جلسة`:(d.error||d.message||'لا توجد بيانات')}catch(e){document.getElementById('state').textContent='تعذّر قراءة حالة القاعدة'}}
 async function load(){const q=new URLSearchParams({start:document.getElementById('start').value,end:document.getElementById('end').value,symbol:document.getElementById('symbol').value});const d=await(await fetch('/api/results?'+q)).json();document.getElementById('csv').href='/api/export?'+q;document.getElementById('count').textContent=d.count+' إشارة';const freq={};d.rows.forEach(r=>freq[r.signal_date]=(freq[r.signal_date]||0)+1);let prev='',group=-1;const keys=['signal_date','symbol','close','purple_sessions','gray_sessions','sequence_sessions','purple_min_rps','peak_after','peak_date','peak_gain_pct','sessions_to_peak','latest_close'];document.getElementById('rows').innerHTML=d.rows.map(r=>{if(r.signal_date!==prev){prev=r.signal_date;if(freq[prev]>1)group++}return '<tr class="'+(freq[r.signal_date]>1?(group%2?'blue':'gold'):'')+'">'+keys.map(k=>'<td>'+val(r,k)+'</td>').join('')+'</tr>'}).join('')}
+async function startScan(){
+ const token=document.getElementById('adminToken').value;
+ const rs=Number(document.getElementById('rs').value),fast=Number(document.getElementById('fast').value),slow=Number(document.getElementById('slow').value);
+ const el=document.getElementById('scanStatus');
+ if(!token){el.textContent='أدخلي رمز الإدارة';return}
+ if(!(rs>=20&&rs<=150&&fast>=3&&fast<=30&&slow>=20&&slow<=150&&fast<slow)){el.textContent='إعدادات المؤشرات غير صالحة';return}
+ try {const r=await fetch('/api/scan',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':token},body:JSON.stringify({rs,fast,slow})});
+  const j=await r.json();el.textContent=j.error||j.message||'تعذّر بدء الفحص';
+  if(r.ok){document.getElementById('scanBtn').disabled=true;pollScan()}
+ } catch(e){el.textContent='تعذّر الاتصال بالخادم'}
+}
+let scanTimer=null;
+async function pollScan(){
+ try{const r=await fetch('/api/status');const j=await r.json();
+ const el=document.getElementById('scanStatus');el.textContent=j.running?'الفحص جارٍ...':(j.message||'جاهز');
+ if(j.running){scanTimer=setTimeout(pollScan,3500)}else{document.getElementById('scanBtn').disabled=false;if(j.success===true)await load()}
+ }catch(e){document.getElementById('scanStatus').textContent='تعذّر قراءة حالة الفحص';document.getElementById('scanBtn').disabled=false}
+}
 status();load();
 </script></body></html>"""
