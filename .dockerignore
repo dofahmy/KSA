@@ -1,0 +1,8 @@
+*.dump
+*.zip
+*.csv
+.env
+.venv*
+__pycache__/
+.git/
+*backup*
